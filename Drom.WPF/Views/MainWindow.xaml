@@ -1,0 +1,150 @@
+﻿<Window x:Class="Drom.WPF.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:vms="clr-namespace:Drom.WPF.ViewModels"
+        xmlns:views="clr-namespace:Drom.WPF.Views"
+        FontFamily="{StaticResource MaterialDesignFont}"
+        d:DataContext="{d:DesignInstance vms:MainWindowViewModel}"
+        mc:Ignorable="d"
+        Title="Главное окно"
+        WindowStartupLocation="CenterScreen"
+        MinHeight="450"
+        MinWidth="800">
+    <Window.Resources>
+        <SolidColorBrush x:Key="WhiteForegroundBrush">White</SolidColorBrush>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid MinHeight="60"
+              Background="Black">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Left">
+                <Image Source="/logo.png"
+                       Height="40"
+                       Margin="5"
+                       Stretch="Fill" />
+                <TextBlock Text="ДРОМ"
+                           FontWeight="600"
+                           FontSize="22"
+                           Margin="10,0,0,0"
+                           Foreground="{StaticResource WhiteForegroundBrush}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal"
+                        Grid.Column="1"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                <StackPanel.Resources>
+                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                        <Setter Property="Foreground" Value="{StaticResource WhiteForegroundBrush}" />
+                        <Setter Property="FontSize" Value="18" />
+                    </Style>
+                </StackPanel.Resources>
+                <Button Content="Каталог"
+                        Command="{Binding PageChangedCommand}"
+                        CommandParameter="{Binding CatalogPageViewModel}"
+                        Foreground="{StaticResource WhiteForegroundBrush}" />
+                <Button Content="Мои объявления"
+                        Command="{Binding PageChangedCommand}"
+                        CommandParameter="{Binding MyAdsPageViewModel}"
+                        Foreground="{StaticResource WhiteForegroundBrush}" />
+                <Button Content="Избранное"
+                        Command="{Binding PageChangedCommand}"
+                        CommandParameter="{Binding FavoritesPageViewModel}"
+                        Foreground="{StaticResource WhiteForegroundBrush}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Grid.Column="2"
+                        VerticalAlignment="Center">
+                <Button Foreground="{StaticResource WhiteForegroundBrush}"
+                        Command="{Binding OpenCreateAdDialogCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="AddCircle"
+                                                 Width="20"
+                                                 Height="20"
+                                                 VerticalAlignment="Center" />
+                        <TextBlock Text="Разместить объявление"
+                                   VerticalAlignment="Center"
+                                   Margin="5, 0, 0, 0" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource MaterialDesignFlatButton}"
+                        Visibility="{Binding CurrentUser, Converter={x:Static vms:MainWindowViewModel.InverseNullableToVisibilityConverter}, ConverterParameter={x:Null}}"
+                        Content="Вход/регистрация"
+                        Command="{Binding OpenAuthDialogCommand}"
+                        Margin="10,0,10,0"
+                        Foreground="{StaticResource WhiteForegroundBrush}" />
+                <materialDesign:PopupBox
+                    Visibility="{Binding CurrentUser, Converter={StaticResource NullableToVisibilityConverter}}"
+                    Margin="10, 0, 10, 0"
+                    VerticalAlignment="Center">
+                    <materialDesign:PopupBox.ToggleContent>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Account"
+                                                     Foreground="{StaticResource WhiteForegroundBrush}"
+                                                     Width="25"
+                                                     Height="25" />
+                            <TextBlock Text="{Binding CurrentUser.Username}"
+                                       Margin="7, 0, 0, 0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource WhiteForegroundBrush}"
+                                       FontSize="16" />
+                        </StackPanel>
+                    </materialDesign:PopupBox.ToggleContent>
+
+                    <materialDesign:PopupBox.PopupContent>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding SignOutCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Logout"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Text="Выйти"
+                                           VerticalAlignment="Center"
+                                           Margin="6, 0, 0, 0" />
+                            </StackPanel>
+                        </Button>
+                    </materialDesign:PopupBox.PopupContent>
+                </materialDesign:PopupBox>
+            </StackPanel>
+        </Grid>
+        
+        <materialDesign:Transitioner Grid.Row="1"
+                                     SelectedIndex="{Binding SelectedPageIndex}">
+            <views:CatalogPageControl DataContext="{Binding DataContext.CatalogPageViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            <views:MyAdsPageControl DataContext="{Binding DataContext.MyAdsPageViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            <views:FavoritesPageControl DataContext="{Binding DataContext.FavoritesPageViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
+        </materialDesign:Transitioner>
+
+        <materialDesign:Snackbar Margin="20"
+                                 Grid.Row="1"
+                                 MessageQueue="{Binding SnackbarMessageQueue}"
+                                 VerticalAlignment="Bottom"
+                                 HorizontalAlignment="Left" />
+
+        <materialDesign:DialogHost Grid.RowSpan="2"
+                                   CloseOnClickAway="True"
+                                   Identifier="{x:Static vms:AuthViewModel.DialogId}" />
+
+        <materialDesign:DialogHost Grid.RowSpan="2"
+                                   Identifier="{x:Static vms:CreateAdViewModel.DialogId}" />
+        
+        <materialDesign:DialogHost Grid.RowSpan="2"
+                                   Identifier="{x:Static vms:OkCancelDialogViewModel.DialogId}" />
+        
+        <materialDesign:DialogHost Grid.RowSpan="2"
+                                   Identifier="{x:Static vms:EditAdViewModel.DialogId}" />
+    </Grid>
+</Window>
