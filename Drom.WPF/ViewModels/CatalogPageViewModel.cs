@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using Drom.WPF.DAL;
 using Drom.WPF.DAL.Models;
 using Drom.WPF.Infrastructure;
+using MaterialDesignThemes.Wpf;
 using MaterialDesignThemes.Wpf.Converters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -30,6 +31,8 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
 
     [ObservableProperty] 
     [NotifyCanExecuteChangedFor(nameof(BackCommand))]
+    [NotifyCanExecuteChangedFor(nameof(EditSelectedAdCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSelectedAdCommand))]
     private AdFullInfoViewModel? _selectedAd;
     
     [ObservableProperty]
@@ -224,11 +227,46 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
             await dbContext.SaveChangesAsync();
             
             await RefreshAsync();
-            return;
         }
     }
     
     private bool CanBack() => SelectedAd is not null;
+
+    [RelayCommand(CanExecute = nameof(CanBack))]
+    private async Task EditSelectedAd()
+    {
+        using var scope = App.Services.CreateScope();
+        var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<EditAdViewModel>>();
+        await dialogContent.ViewModel.Initialize(SelectedAd!.Id);
+        var result = await DialogHost.Show(dialogContent, EditAdViewModel.DialogId);
+
+        if (result is true)
+        {
+            await RefreshAsync();
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanBack))]
+    private async Task DeleteSelectedAd()
+    {
+        using var scope = App.Services.CreateScope();
+        var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<OkCancelDialogViewModel>>();
+        dialogContent.ViewModel.Message = "Вы уверены, что хотите снять с публикации(удалить) объявление?";
+
+        var result = await DialogHost.Show(dialogContent, OkCancelDialogViewModel.DialogId);
+        if (result is not true)
+        {
+            return;
+        }
+        
+        var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
+        var queue = scope.ServiceProvider.GetRequiredService<ISnackbarMessageQueue>();
+        
+        await dbContext.Ads.Where(e => e.Id == SelectedAd!.Id).ExecuteDeleteAsync();
+        
+        queue.Enqueue("Объявление снято с публикации.");
+        await RefreshAsync();
+    }
 }
 
 public partial class AdFullInfoViewModel : ObservableObject

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Drom.WPF.DAL.Migrations
 {
     [DbContext(typeof(DromDbContext))]
-    [Migration("20250104190516_Initial")]
+    [Migration("20250116140418_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -103,6 +103,60 @@ namespace Drom.WPF.DAL.Migrations
                     b.ToTable("FavoriteAds");
                 });
 
+            modelBuilder.Entity("Drom.WPF.DAL.Models.NewsItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("CoverImage")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTimeOffset>("PublicationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("News");
+                });
+
+            modelBuilder.Entity("Drom.WPF.DAL.Models.NewsItemComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("NewsItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("PublicationDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NewsItemId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("NewsItemComments");
+                });
+
             modelBuilder.Entity("Drom.WPF.DAL.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -114,6 +168,10 @@ namespace Drom.WPF.DAL.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -131,6 +189,16 @@ namespace Drom.WPF.DAL.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("3ee9159b-2673-4a0c-8a94-fc6384e64565"),
+                            PasswordHash = "$2a$11$Sdf6WhneyCuyF.Jfwsn0wudMAQEB1GFx/vI5kPl7ZJDcNPy7LDI7G",
+                            PhoneNumber = "+7 999 999 9999",
+                            Role = "Admin",
+                            Username = "Admin"
+                        });
                 });
 
             modelBuilder.Entity("Drom.WPF.DAL.Models.Ad", b =>
@@ -168,6 +236,25 @@ namespace Drom.WPF.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("Ad");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Drom.WPF.DAL.Models.NewsItemComment", b =>
+                {
+                    b.HasOne("Drom.WPF.DAL.Models.NewsItem", "NewsItem")
+                        .WithMany()
+                        .HasForeignKey("NewsItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Drom.WPF.DAL.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NewsItem");
 
                     b.Navigation("User");
                 });

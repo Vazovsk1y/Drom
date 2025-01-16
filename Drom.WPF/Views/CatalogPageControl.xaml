@@ -4,12 +4,17 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vms="clr-namespace:Drom.WPF.ViewModels"
+             xmlns:models="clr-namespace:Drom.WPF.DAL.Models"
              FontFamily="{StaticResource MaterialDesignFont}"
+             xmlns:infr="clr-namespace:Drom.WPF.Infrastructure"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:b="clr-namespace:Microsoft.Xaml.Behaviors;assembly=Microsoft.Xaml.Behaviors"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              d:DataContext="{d:DesignInstance vms:CatalogPageViewModel}"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <infr:CurrentUserRoleVisibilityConverter x:Key="CurrentUserRoleVisibilityConverter"/>
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -166,15 +171,37 @@
                                  materialDesign:HintAssist.Hint="Описание"
                                  MinHeight="100"
                                  TextWrapping="Wrap" />
-
-                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                Visibility="{Binding SelectedAd.IsAbleAddToFavorites, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                HorizontalAlignment="Left"
-                                Command="{Binding AddToFavoritesCommand}"
-                                CommandParameter="{Binding SelectedAd}"
-                                Margin="0, 4, 0, 0">
-                            <materialDesign:PackIcon Kind="Favorite"/>
-                        </Button>
+                        
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Left"
+                                    Margin="0, 4, 0, 0">
+                            <Button Style="{StaticResource MaterialDesignIconButton}"
+                                    Visibility="{Binding SelectedAd.IsAbleAddToFavorites, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    Command="{Binding AddToFavoritesCommand}"
+                                    CommandParameter="{Binding SelectedAd}">
+                                <materialDesign:PackIcon Kind="Favorite"/>
+                            </Button>
+                        
+                            <Button Style="{StaticResource MaterialDesignIconButton}"
+                                    Visibility="{Binding DataContext.CurrentUser, 
+                                RelativeSource={RelativeSource AncestorType=Window}, 
+                                Converter={StaticResource CurrentUserRoleVisibilityConverter}, 
+                                ConverterParameter={x:Static models:Role.Admin}}"
+                                    Margin="4, 0, 0, 0"
+                                    Command="{Binding EditSelectedAdCommand}">
+                                <materialDesign:PackIcon Kind="Edit"/>
+                            </Button>
+                        
+                            <Button Style="{StaticResource MaterialDesignIconButton}"
+                                    Visibility="{Binding DataContext.CurrentUser, 
+                                RelativeSource={RelativeSource AncestorType=Window}, 
+                                Converter={StaticResource CurrentUserRoleVisibilityConverter}, 
+                                ConverterParameter={x:Static models:Role.Admin}}"
+                                    Margin="4, 0, 0, 0"
+                                    Command="{Binding DeleteSelectedAdCommand}">
+                                <materialDesign:PackIcon Kind="Delete"/>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

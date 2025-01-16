@@ -5,13 +5,15 @@ namespace Drom.WPF.DAL.Models;
 
 public class User
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    public required Guid Id { get; init; }
 
     public required string Username { get; init; }
     
     public required string PhoneNumber { get; init; }
     
     public required string PasswordHash { get; init; }
+    
+    public required Role Role { get; init; }
 }
 
 public class UserConfiguration : IEntityTypeConfiguration<User>
@@ -32,5 +34,15 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder
             .Property(x => x.Username)
             .UseCollation(DromDbContext.CaseInsensitiveCollation);
+        
+        builder
+            .Property(e => e.Role)
+            .HasConversion(e => e.ToString(), e => Enum.Parse<Role>(e));
     }
+}
+
+public enum Role
+{
+    Admin,
+    User,
 }

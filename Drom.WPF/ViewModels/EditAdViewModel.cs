@@ -128,10 +128,6 @@ public partial class EditAdViewModel : ObservableObject
             }
             
             var value = new BitmapImage(new Uri(file));
-            // value.BeginInit();
-            // value.CacheOption = BitmapCacheOption.OnLoad;
-            // value.EndInit();
-            
             Images.Add(new EditAdImageViewModel()
             {
                 Id = Guid.NewGuid(),
@@ -170,48 +166,56 @@ public partial class EditAdViewModel : ObservableObject
         var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
         var ad = await dbContext.Ads.FirstAsync(e => e.Id == _adId);
 
-        ad.Description = Description!;
-        ad.CarBrandName = CarBrandName!;
-        ad.CarModelName = CarModelName!;
-        ad.Price = (decimal)Price!;
-        ad.CarYear = (int)CarYear!;
+        if (currentUser.Role == Role.Admin || ad.UserId == currentUser.Id)
+        {
+            ad.Description = Description!;
+            ad.CarBrandName = CarBrandName!;
+            ad.CarModelName = CarModelName!;
+            ad.Price = (decimal)Price!;
+            ad.CarYear = (int)CarYear!;
         
-        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-        try
-        {
-            var imagesIds = await dbContext.AdImages.Where(e => e.AdId == _adId).Select(e => e.Id).ToListAsync();
-            await dbContext.AdImages.Where(e => e.AdId == _adId).ExecuteDeleteAsync();
-            
-            var newMainImage = Images.FirstOrDefault(e => e.IsMain) ?? Images.First();
-
-            var newImages = Images.Select(async e => new AdImage
+            try
             {
-                Id = e.Id,
-                AdId = _adId,
-                Bytes = e.IsNew ? await File.ReadAllBytesAsync(e.Value.UriSource.AbsolutePath) : StreamToBytes(e.Value.StreamSource),
-                IsMain = newMainImage.Id == e.Id,
-            }).ToList();
+                var imagesIds = await dbContext.AdImages.Where(e => e.AdId == _adId).Select(e => e.Id).ToListAsync();
+                await dbContext.AdImages.Where(e => e.AdId == _adId).ExecuteDeleteAsync();
             
-            var newImagesArr = await Task.WhenAll(newImages);
+                var newMainImage = Images.FirstOrDefault(e => e.IsMain) ?? Images.First();
 
-            dbContext.AdImages.AddRange(newImagesArr);
-            await dbContext.SaveChangesAsync();
+                var newImages = Images.Select(async e => new AdImage
+                {
+                    Id = e.Id,
+                    AdId = _adId,
+                    Bytes = e.IsNew ? await File.ReadAllBytesAsync(e.Value.UriSource.AbsolutePath) : StreamToBytes(e.Value.StreamSource),
+                    IsMain = newMainImage.Id == e.Id,
+                }).ToList();
             
-            await transaction.CommitAsync();
+                var newImagesArr = await Task.WhenAll(newImages);
+
+                dbContext.AdImages.AddRange(newImagesArr);
+                await dbContext.SaveChangesAsync();
             
-            foreach (var id in imagesIds.Where(e => !newImagesArr.Select(a => a.Id).Contains(e)))
-            {
-                cache.Remove($"{ad.Id}{id}");
+                await transaction.CommitAsync();
+            
+                foreach (var id in imagesIds.Where(e => !newImagesArr.Select(a => a.Id).Contains(e)))
+                {
+                    cache.Remove($"{ad.Id}{id}");
+                }
+            
+                DialogHost.Close(DialogId, true);
+                snackBarQueue.Enqueue("Объявление успешно отредактировано.");
             }
-            
-            DialogHost.Close(DialogId, true);
-            snackBarQueue.Enqueue("Объявление успешно отредактировано.");
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
-        catch
+        else
         {
-            await transaction.RollbackAsync();
-            throw;
+            DialogHost.Close(DialogId);
+            snackBarQueue.Enqueue("Недостаточно полномочий на выполнение данной операции.");
         }
     }
     

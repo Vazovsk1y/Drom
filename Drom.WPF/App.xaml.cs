@@ -6,6 +6,7 @@ using Drom.WPF.ViewModels;
 using Drom.WPF.Views;
 using MaterialDesignThemes.Wpf;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -31,7 +32,13 @@ public partial class App : Application
                 e.AddTransient<CreateAdViewModel>();
                 e.AddTransient<IDialogContent<CreateAdViewModel>, CreateAdControl>();
 
-                e.AddDbContext<DromDbContext>(o => o.UseNpgsql(ctx.Configuration.GetConnectionString("Database")));
+                e.AddDbContext<DromDbContext>(o =>
+                {
+                    o.UseNpgsql(ctx.Configuration.GetConnectionString("Database"));
+                    
+                    // https://github.com/dotnet/efcore/issues/35285
+                    o.ConfigureWarnings(warnings => warnings.Log(RelationalEventId.PendingModelChangesWarning));
+                });
                 e.AddDbContextFactory<DromDbContext>();
                 
                 e.AddSingleton<ICurrentUserService, CurrentUserService>();

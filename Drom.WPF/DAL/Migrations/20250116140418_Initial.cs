@@ -15,13 +15,29 @@ namespace Drom.WPF.DAL.Migrations
                 .Annotation("Npgsql:CollationDefinition:case_insensitive_collation", "und-u-ks-level1,und-u-ks-level1,icu,False");
 
             migrationBuilder.CreateTable(
+                name: "News",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    PublicationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Title = table.Column<string>(type: "text", nullable: false),
+                    Content = table.Column<string>(type: "text", nullable: false),
+                    CoverImage = table.Column<byte[]>(type: "bytea", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_News", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Username = table.Column<string>(type: "text", nullable: false, collation: "case_insensitive_collation"),
                     PhoneNumber = table.Column<string>(type: "text", nullable: false),
-                    PasswordHash = table.Column<string>(type: "text", nullable: false)
+                    PasswordHash = table.Column<string>(type: "text", nullable: false),
+                    Role = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -46,6 +62,33 @@ namespace Drom.WPF.DAL.Migrations
                     table.PrimaryKey("PK_Ads", x => x.Id);
                     table.ForeignKey(
                         name: "FK_Ads_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "NewsItemComments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    NewsItemId = table.Column<Guid>(type: "uuid", nullable: false),
+                    PublicationDateTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Content = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_NewsItemComments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_NewsItemComments_News_NewsItemId",
+                        column: x => x.NewsItemId,
+                        principalTable: "News",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_NewsItemComments_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -96,6 +139,11 @@ namespace Drom.WPF.DAL.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.InsertData(
+                table: "Users",
+                columns: new[] { "Id", "PasswordHash", "PhoneNumber", "Role", "Username" },
+                values: new object[] { new Guid("3ee9159b-2673-4a0c-8a94-fc6384e64565"), "$2a$11$Sdf6WhneyCuyF.Jfwsn0wudMAQEB1GFx/vI5kPl7ZJDcNPy7LDI7G", "+7 999 999 9999", "Admin", "Admin" });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AdImages_AdId_IsMain",
                 table: "AdImages",
@@ -111,6 +159,16 @@ namespace Drom.WPF.DAL.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_FavoriteAds_UserId",
                 table: "FavoriteAds",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NewsItemComments_NewsItemId",
+                table: "NewsItemComments",
+                column: "NewsItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NewsItemComments_UserId",
+                table: "NewsItemComments",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
@@ -136,7 +194,13 @@ namespace Drom.WPF.DAL.Migrations
                 name: "FavoriteAds");
 
             migrationBuilder.DropTable(
+                name: "NewsItemComments");
+
+            migrationBuilder.DropTable(
                 name: "Ads");
+
+            migrationBuilder.DropTable(
+                name: "News");
 
             migrationBuilder.DropTable(
                 name: "Users");

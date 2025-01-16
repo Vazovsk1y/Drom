@@ -62,9 +62,11 @@ public partial class AuthViewModel : ObservableObject
 
         var user = new User
         {
+            Id = Guid.NewGuid(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(Password),
             Username = Username!,
-            PhoneNumber = PhoneNumber!
+            PhoneNumber = PhoneNumber!,
+            Role = Role.User,
         };
         
         dbContext.Users.Add(user);
