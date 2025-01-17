@@ -59,6 +59,13 @@ public partial class App : Application
                 e.AddTransient<EditAdViewModel>();
                 e.AddTransient<IDialogContent<EditAdViewModel>, EditAdControl>();
 
+                e.AddTransient<IDialogContent<NewsItemAddViewModel>, NewsItemAddControl>();
+                e.AddTransient<NewsItemAddViewModel>();
+                e.AddSingleton<NewsPageViewModel>();
+                
+                e.AddTransient<IDialogContent<NewsItemEditViewModel>, NewsItemEditControl>();
+                e.AddTransient<NewsItemEditViewModel>();
+
                 e.AddMemoryCache();
             })
             .Build();

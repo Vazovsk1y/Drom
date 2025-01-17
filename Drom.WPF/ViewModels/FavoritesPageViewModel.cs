@@ -14,7 +14,7 @@ namespace Drom.WPF.ViewModels;
 
 public partial class FavoritesPageViewModel : ObservableObject, IHasPageIndex, IRefreshable
 {
-    public int PageIndex { get; } = 2;
+    public int PageIndex { get; } = 3;
     
     private bool _isRefreshingRunning;
     

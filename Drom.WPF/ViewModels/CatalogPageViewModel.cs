@@ -19,7 +19,7 @@ namespace Drom.WPF.ViewModels;
 
 public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRefreshable
 {
-    public int PageIndex { get; } = 0;
+    public int PageIndex { get; } = 1;
 
     private bool _isRefreshingRunning;
     

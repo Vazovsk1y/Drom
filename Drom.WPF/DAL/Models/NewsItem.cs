@@ -9,11 +9,11 @@ public class NewsItem
     
     public required DateTimeOffset PublicationDateTime { get; init; }
     
-    public required string Title { get; init; }
+    public required string Title { get; set; }
     
-    public required string Content { get; init; }
+    public required string Content { get; set; }
     
-    public required byte[] CoverImage { get; init; }
+    public required byte[] CoverImage { get; set; }
 }
 
 public class NewsItemConfiguration : IEntityTypeConfiguration<NewsItem>

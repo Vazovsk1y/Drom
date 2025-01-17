@@ -12,7 +12,8 @@ public partial class MainWindowViewModel(
     ISnackbarMessageQueue snackbarMessageQueue, 
     CatalogPageViewModel catalogPageViewModel,
     FavoritesPageViewModel favoritesPageViewModel,
-    MyAdsPageViewModel myAdsPageViewModel) : ObservableObject
+    MyAdsPageViewModel myAdsPageViewModel,
+    NewsPageViewModel newsPageViewModel) : ObservableObject
 {
     public static NullableToVisibilityConverter InverseNullableToVisibilityConverter { get; } = new()
     {
@@ -36,6 +37,8 @@ public partial class MainWindowViewModel(
     public FavoritesPageViewModel FavoritesPageViewModel { get; } = favoritesPageViewModel;
 
     public MyAdsPageViewModel MyAdsPageViewModel { get; } = myAdsPageViewModel;
+
+    public NewsPageViewModel NewsPageViewModel { get; } = newsPageViewModel;
 
     [RelayCommand]
     private async Task OpenAuthDialog()
@@ -77,6 +80,18 @@ public partial class MainWindowViewModel(
         
         var content = App.Services.GetRequiredService<IDialogContent<CreateAdViewModel>>();
         var result = await DialogHost.Show(content, CreateAdViewModel.DialogId);
+
+        if (result is true && SelectedPage is IRefreshable refreshable)
+        {
+            await refreshable.RefreshAsync();
+        }
+    }
+    
+    [RelayCommand]
+    private async Task OpenAddNewsItemDialog()
+    {
+        var content = App.Services.GetRequiredService<IDialogContent<NewsItemAddViewModel>>();
+        var result = await DialogHost.Show(content, NewsItemAddViewModel.DialogId);
 
         if (result is true && SelectedPage is IRefreshable refreshable)
         {

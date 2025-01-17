@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -13,14 +13,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Drom.WPF.ViewModels;
 
-public partial class MyAdsPageViewModel : ObservableObject, IHasPageIndex, IRefreshable
+public partial class NewsPageViewModel : ObservableObject, IHasPageIndex, IRefreshable
 {
-    public int PageIndex { get; } = 2;
+    public int PageIndex { get; } = 0;
     
     private bool _isRefreshingRunning;
     
     [ObservableProperty]
-    private ObservableCollection<MyAdOverviewViewModel>? _myAds;
+    private ObservableCollection<NewsItemViewModel>? _news;
+    
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(BackCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteSelectedItemCommand))]
+    [NotifyCanExecuteChangedFor(nameof(EditSelectedItemCommand))]
+    private NewsItemViewModel? _selectedItem;
     
     public async Task RefreshAsync()
     {
@@ -30,43 +36,32 @@ public partial class MyAdsPageViewModel : ObservableObject, IHasPageIndex, IRefr
         }
         
         _isRefreshingRunning = true;
+        SelectedItem = null;
         using var scope = App.Services.CreateScope();
-        var currentUserService = scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
-        
-        if (currentUserService.Get() is not { } user)
-        {
-            MyAds = null;
-            _isRefreshingRunning = false;
-            return;
-        }
-        
         var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DromDbContext>>();
         var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
 
         await using var mainDbContext = await dbContextFactory.CreateDbContextAsync();
         
         var items = await mainDbContext
-            .Ads
-            .Where(a => a.UserId == user.Id)
-            .OrderBy(e => e.CreationDateTime)
-            .Select(e => new MyAdOverviewViewModel
+            .News
+            .OrderBy(e => e.PublicationDateTime)
+            .Select(e => new NewsItemViewModel
             {
                 Id = e.Id,
-                UserId = e.UserId,
-                Title = $"{e.CarBrandName} {e.CarModelName}, {e.CarYear}",
-                CreationDateTime = e.CreationDateTime.ToLocalTime(),
-                Price = e.Price,
-                MainImageId = e.AdImages.First(i => i.IsMain).Id,
+                Title = e.Title,
+                Content = e.Content,
+                PublicationDateTime = e.PublicationDateTime.ToLocalTime(),
             })
             .ToListAsync();
         
-        var loadMainImages = items
+        var imgs = items
             .Select(async item =>
             {
-                var img = await cache.GetOrCreateAsync<BitmapImage>($"{item.Id}{item.MainImageId}", async _ =>
+                var img = await cache.GetOrCreateAsync<BitmapImage>($"{item.Id}", async _ =>
                 {
-                    await using var dbContext = await dbContextFactory.CreateDbContextAsync(); 
-                    var bytes = (await dbContext.AdImages.FirstAsync(e => e.Id == item.MainImageId)).Bytes;
+                    await using var dbContext = await dbContextFactory.CreateDbContextAsync();
+                    var bytes = await dbContext.News.Where(e => e.Id == item.Id).Select(e => e.CoverImage).FirstAsync();
                     var bt = new BitmapImage();
                     using var stream = new MemoryStream(bytes);
                     bt.BeginInit();
@@ -78,27 +73,39 @@ public partial class MyAdsPageViewModel : ObservableObject, IHasPageIndex, IRefr
                 
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    item.MainImage = img;
+                    item.CoverImage = img;
                 });
             });
         
-        await Task.WhenAll(loadMainImages);
+        await Task.WhenAll(imgs);
         
-        MyAds = new ObservableCollection<MyAdOverviewViewModel>(items);
+        News = new ObservableCollection<NewsItemViewModel>(items);
         _isRefreshingRunning = false;
     }
+    
+    
+    [RelayCommand(CanExecute = nameof(CanBack))]
+    private void Back() => SelectedItem = null;
 
+    private bool CanBack() => SelectedItem is not null;
+    
     [RelayCommand]
-    private async Task DeleteAd(MyAdOverviewViewModel? ad)
+    private void OnNewsItemSelected(NewsItemViewModel? ni)
     {
-        if (ad is null)
+        if (ni is null)
         {
             return;
         }
 
+        SelectedItem = ni;
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanBack))]
+    private async Task DeleteSelectedItem()
+    {
         using var scope = App.Services.CreateScope();
         var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<OkCancelDialogViewModel>>();
-        dialogContent.ViewModel.Message = "Вы уверены, что хотите снять с публикации(удалить) объявление?";
+        dialogContent.ViewModel.Message = "Вы уверены, что хотите удалить статью?";
 
         var result = await DialogHost.Show(dialogContent, OkCancelDialogViewModel.DialogId);
         if (result is not true)
@@ -109,24 +116,19 @@ public partial class MyAdsPageViewModel : ObservableObject, IHasPageIndex, IRefr
         var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
         var queue = scope.ServiceProvider.GetRequiredService<ISnackbarMessageQueue>();
         
-        await dbContext.Ads.Where(e => e.Id == ad.Id).ExecuteDeleteAsync();
+        await dbContext.News.Where(e => e.Id == SelectedItem!.Id).ExecuteDeleteAsync();
         
-        queue.Enqueue("Объявление снято с публикации.");
-        MyAds?.Remove(ad);
+        queue.Enqueue("Статья успешно удалена.");
+        await RefreshAsync();
     }
-
-    [RelayCommand]
-    private async Task EditAd(MyAdOverviewViewModel? ad)
+    
+    [RelayCommand(CanExecute = nameof(CanBack))]
+    private async Task EditSelectedItem()
     {
-        if (ad is null)
-        {
-            return;
-        }
-        
         using var scope = App.Services.CreateScope();
-        var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<EditAdViewModel>>();
-        await dialogContent.ViewModel.Initialize(ad.Id);
-        var result = await DialogHost.Show(dialogContent, EditAdViewModel.DialogId);
+        var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<NewsItemEditViewModel>>();
+        await dialogContent.ViewModel.Initialize(SelectedItem!.Id);
+        var result = await DialogHost.Show(dialogContent, NewsItemEditViewModel.DialogId);
 
         if (result is true)
         {
@@ -135,20 +137,16 @@ public partial class MyAdsPageViewModel : ObservableObject, IHasPageIndex, IRefr
     }
 }
 
-public partial class MyAdOverviewViewModel : ObservableObject
+public partial class NewsItemViewModel : ObservableObject
 {
     public required Guid Id { get; init; }
     
-    public required Guid UserId { get; init; }
-    
     public required string Title { get; init; }
     
-    public required DateTimeOffset CreationDateTime { get; init; }
+    public required string Content { get; init; }
     
-    public required decimal Price { get; init; }
-    
-    public required Guid MainImageId { get; init; }
+    public required DateTimeOffset PublicationDateTime { get; init; }
     
     [ObservableProperty]
-    private BitmapImage? _mainImage;
+    private BitmapImage? _coverImage;
 }

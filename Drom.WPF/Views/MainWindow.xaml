@@ -10,6 +10,7 @@
         d:DataContext="{d:DesignInstance vms:MainWindowViewModel}"
         mc:Ignorable="d"
         Title="Главное окно"
+        Loaded="MainWindow_OnLoaded"
         WindowStartupLocation="CenterScreen"
         MinHeight="450"
         MinWidth="800">
@@ -53,6 +54,10 @@
                         <Setter Property="FontSize" Value="18" />
                     </Style>
                 </StackPanel.Resources>
+                <Button Content="Автоновости"
+                        Command="{Binding PageChangedCommand}"
+                        CommandParameter="{Binding NewsPageViewModel}"
+                        Foreground="{StaticResource WhiteForegroundBrush}"/>
                 <Button Content="Каталог"
                         Command="{Binding PageChangedCommand}"
                         CommandParameter="{Binding CatalogPageViewModel}"
@@ -123,6 +128,7 @@
         
         <materialDesign:Transitioner Grid.Row="1"
                                      SelectedIndex="{Binding SelectedPageIndex}">
+            <views:NewsPageControl DataContext="{Binding DataContext.NewsPageViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
             <views:CatalogPageControl DataContext="{Binding DataContext.CatalogPageViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
             <views:MyAdsPageControl DataContext="{Binding DataContext.MyAdsPageViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
             <views:FavoritesPageControl DataContext="{Binding DataContext.FavoritesPageViewModel, RelativeSource={RelativeSource AncestorType=Window}}"/>
@@ -146,5 +152,11 @@
         
         <materialDesign:DialogHost Grid.RowSpan="2"
                                    Identifier="{x:Static vms:EditAdViewModel.DialogId}" />
+        
+        <materialDesign:DialogHost Grid.RowSpan="2"
+                                   Identifier="{x:Static vms:NewsItemAddViewModel.DialogId}" />
+        
+        <materialDesign:DialogHost Grid.RowSpan="2"
+                                   Identifier="{x:Static vms:NewsItemEditViewModel.DialogId}" />
     </Grid>
 </Window>
