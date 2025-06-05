@@ -13,6 +13,8 @@ public class User
     
     public required string PasswordHash { get; init; }
     
+    public required DateTimeOffset RegistrationDateTime { get; init; }
+    
     public required Role Role { get; init; }
 }
 

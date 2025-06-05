@@ -32,6 +32,9 @@ public partial class App : Application
                 e.AddTransient<CreateAdViewModel>();
                 e.AddTransient<IDialogContent<CreateAdViewModel>, CreateAdControl>();
 
+                e.AddTransient<DatesDialogViewModel>();
+                e.AddTransient<IDialogContent<DatesDialogViewModel>, DatesDialog>();
+
                 e.AddDbContext<DromDbContext>(o =>
                 {
                     o.UseNpgsql(ctx.Configuration.GetConnectionString("Database"));

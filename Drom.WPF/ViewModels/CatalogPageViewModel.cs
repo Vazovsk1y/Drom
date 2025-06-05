@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.IO;
+using System.Linq.Dynamic.Core;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Data;
@@ -56,6 +57,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         var items = await mainDbContext
             .Ads
             .OrderBy(e => e.CreationDateTime)
+            .Where(e => !e.Sold)
             .Select(e => new AdOverviewViewModel
             {
                 Id = e.Id,
@@ -118,7 +120,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
     private async Task GenerateSellReport()
     {
         using var scope = App.Services.CreateScope();
-        var dialogContent = new DatesDialogViewModel();
+        var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<DatesDialogViewModel>>();
 
         var result = await DialogHost.Show(dialogContent, OkCancelDialogViewModel.DialogId);
         if (result is not true)
@@ -129,8 +131,8 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
         var queue = scope.ServiceProvider.GetRequiredService<ISnackbarMessageQueue>();
 
-        var from = dialogContent.From;
-        var to = dialogContent.To;
+        var from = dialogContent.ViewModel.From;
+        var to = dialogContent.ViewModel.To;
 
         var soldAds = await dbContext
             .Ads
@@ -149,7 +151,9 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
             })
             .ToListAsync();
 
-        using var template = new XLTemplate(Assembly.GetExecutingAssembly().GetManifestResourceStream("Drom.WPF.ОтчетОПродажах.xlsx"));
+        var d = Assembly.GetExecutingAssembly().GetManifestResourceNames();
+        
+        using var template = new XLTemplate(Assembly.GetExecutingAssembly().GetManifestResourceStream("Drom.WPF.ОтчетОПродажахШаблон.xlsx"));
 
         template.AddVariable(new
         {
@@ -171,7 +175,35 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
     [RelayCommand]
     private async Task GenerateUsersRegistrationsReport()
     {
-        // TODO: 
+        using var scope = App.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
+        var queue = scope.ServiceProvider.GetRequiredService<ISnackbarMessageQueue>();
+        
+        var users = await dbContext.Users
+            .AsNoTracking()
+            .Where(e => e.Role == Role.User)
+            .Select(e => new
+            {
+                e.PhoneNumber,
+                e.Username,
+                RegistrationDateTime = e.RegistrationDateTime.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+            })
+            .ToListAsync();
+
+        var data = new { TotalUsersCount = users.Count, Items = users };
+        
+        using var template = new XLTemplate(Assembly.GetExecutingAssembly().GetManifestResourceStream("Drom.WPF.ОтчетОРегистрацииПользователей.xlsx"));
+
+        template.AddVariable(data);
+        
+        template.Generate();
+        
+        template.Workbook.Worksheets.First().Columns().AdjustToContents();
+
+        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ОтчетОРегистрацииПользователей.xlsx");
+        template.SaveAs(path);
+
+        queue.Enqueue($"Отчет успешно сохранен как {path}");
     }
 
     partial void OnSearchTextChanged(string? value)

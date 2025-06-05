@@ -40,17 +40,44 @@
             
         </StackPanel>
         
-        <Button Grid.Row="0"
-                HorizontalAlignment="Right"
-                Command="{Binding GenerateSellReportCommand}"
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Grid.Row="0">
+            <Button HorizontalAlignment="Right"
+                    Command="{Binding GenerateSellReportCommand}"
+                    Visibility="{Binding DataContext.CurrentUser, 
+                                RelativeSource={RelativeSource AncestorType=Window}, 
+                                Converter={StaticResource CurrentUserRoleVisibilityConverter}, 
+                                ConverterParameter={x:Static models:Role.Admin}}"
+                    Style="{DynamicResource MaterialDesignFlatButton}">
+                <TextBlock Text="Отчет о продажах"
+                           TextDecorations="Underline"/>
+            </Button>
+            
+            
+            <materialDesign:PopupBox
                 Visibility="{Binding DataContext.CurrentUser, 
                                 RelativeSource={RelativeSource AncestorType=Window}, 
                                 Converter={StaticResource CurrentUserRoleVisibilityConverter}, 
                                 ConverterParameter={x:Static models:Role.Admin}}"
-                Style="{DynamicResource MaterialDesignFlatButton}">
-            <TextBlock Text="Отчет о продажах"
-                       TextDecorations="Underline"/>
-        </Button>
+                Margin="10, 0, 10, 0"
+                VerticalAlignment="Center">
+                <materialDesign:PopupBox.ToggleContent>
+                    <TextBlock Text="Активность пользователей"/>
+                </materialDesign:PopupBox.ToggleContent>
+
+                <materialDesign:PopupBox.PopupContent>
+                    <Button Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding GenerateUsersRegistrationsReportCommand}">
+                        <TextBlock Text="Отчет регистрации пользователей"
+                                   VerticalAlignment="Center"
+                                   Margin="6, 0, 0, 0" />
+                    </Button>
+                </materialDesign:PopupBox.PopupContent>
+            </materialDesign:PopupBox>
+        </StackPanel>
+        
+        
         
         <ScrollViewer Grid.Row="1"
                       Visibility="{Binding SelectedAd, Converter={x:Static vms:MainWindowViewModel.InverseNullableToVisibilityConverter}}">

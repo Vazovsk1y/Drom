@@ -67,6 +67,7 @@ public partial class AuthViewModel : ObservableObject
             Username = Username!,
             PhoneNumber = PhoneNumber!,
             Role = Role.User,
+            RegistrationDateTime = DateTimeOffset.UtcNow,
         };
         
         dbContext.Users.Add(user);

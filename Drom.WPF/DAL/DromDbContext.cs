@@ -16,7 +16,8 @@ public class DromDbContext(DbContextOptions<DromDbContext> options) : DbContext(
         PasswordHash = BCrypt.Net.BCrypt.HashPassword(FirstUserPwd),
         Role = Role.Admin,
         Username = "Admin",
-        PhoneNumber = "+7 999 999 9999"
+        PhoneNumber = "+7 999 999 9999",
+        RegistrationDateTime = DateTimeOffset.UtcNow,
     };
     
     public DbSet<User> Users { get; init; }

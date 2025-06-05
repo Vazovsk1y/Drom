@@ -8,19 +8,31 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              d:DataContext="{d:DesignInstance vms:FavoritesPageViewModel}"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <materialDesign:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
     <Grid>
         <ScrollViewer>
             <ItemsControl ItemsSource="{Binding Favorites}"
                           HorizontalContentAlignment="Stretch">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <materialDesign:Card Margin="0, 0, 0, 15">
+                        <materialDesign:Card Margin="0, 0, 0, 15" IsEnabled="{Binding IsNotSold}">
                             <Grid Margin="10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Text="Продано"
+                                           Grid.Column="1"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="18"
+                                           FontWeight="500"
+                                           Visibility="{Binding Sold, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                
                                 <Image Source="{Binding MainImage}"
                                        Height="205"
                                        Width="270"

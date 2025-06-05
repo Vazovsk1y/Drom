@@ -32,6 +32,8 @@
         <None Update="appsettings.json">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <None Remove="ОтчетОРегистрацииПользователей.xlsx" />
+        <EmbeddedResource Include="ОтчетОРегистрацииПользователей.xlsx" />
     </ItemGroup>
 
     <ItemGroup>
