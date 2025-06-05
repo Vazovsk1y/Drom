@@ -57,6 +57,7 @@ public partial class MyAdsPageViewModel : ObservableObject, IHasPageIndex, IRefr
                 CreationDateTime = e.CreationDateTime.ToLocalTime(),
                 Price = e.Price,
                 MainImageId = e.AdImages.First(i => i.IsMain).Id,
+                Sold = e.Sold,
             })
             .ToListAsync();
         
@@ -116,6 +117,35 @@ public partial class MyAdsPageViewModel : ObservableObject, IHasPageIndex, IRefr
     }
 
     [RelayCommand]
+    private async Task MarkAsSold(MyAdOverviewViewModel? ad)
+    {
+        if (ad is null)
+        {
+            return;
+        }
+        
+        using var scope = App.Services.CreateScope();
+        var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<OkCancelDialogViewModel>>();
+        dialogContent.ViewModel.Message = "Отметить проданным?";
+
+        var result = await DialogHost.Show(dialogContent, OkCancelDialogViewModel.DialogId);
+        if (result is not true)
+        {
+            return;
+        }
+        
+        var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
+        var target = await dbContext.Ads.FirstAsync(e => e.Id == ad.Id);
+        
+        target.Sold = true;
+        target.SoldDateTime = DateTimeOffset.UtcNow;
+        
+        await dbContext.SaveChangesAsync();
+
+        await RefreshAsync();
+    }
+
+    [RelayCommand]
     private async Task EditAd(MyAdOverviewViewModel? ad)
     {
         if (ad is null)
@@ -142,6 +172,10 @@ public partial class MyAdOverviewViewModel : ObservableObject
     public required Guid UserId { get; init; }
     
     public required string Title { get; init; }
+    
+    public required bool Sold { get; init; }
+
+    public bool IsNotSold => !Sold;
     
     public required DateTimeOffset CreationDateTime { get; init; }
     

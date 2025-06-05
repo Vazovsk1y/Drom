@@ -56,6 +56,7 @@ public partial class FavoritesPageViewModel : ObservableObject, IHasPageIndex, I
                 CreationDateTime = e.Ad.CreationDateTime.ToLocalTime(),
                 Price = e.Ad.Price,
                 MainImageId = e.Ad.AdImages.First(i => i.IsMain).Id,
+                Sold = e.Ad.Sold,
             })
             .ToListAsync();
         

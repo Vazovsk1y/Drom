@@ -21,6 +21,10 @@ public class Ad
     
     public required decimal Price { get; set; }
     
+    public bool Sold { get; set; }
+    
+    public DateTimeOffset? SoldDateTime { get; set; }
+    
     public User User { get; init; } = null!;
     
     public IEnumerable<AdImage> AdImages { get; init; } = new List<AdImage>();

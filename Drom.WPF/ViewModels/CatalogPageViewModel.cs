@@ -1,9 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
+using ClosedXML.Report;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Drom.WPF.DAL;
@@ -22,21 +24,18 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
     public int PageIndex { get; } = 1;
 
     private bool _isRefreshingRunning;
-    
-    [ObservableProperty]
-    private IEnumerable<AdOverviewViewModel>? _catalogItems;
-    
-    [ObservableProperty]
-    private ICollectionView? _catalogItemsView;
 
-    [ObservableProperty] 
+    [ObservableProperty] private IEnumerable<AdOverviewViewModel>? _catalogItems;
+
+    [ObservableProperty] private ICollectionView? _catalogItemsView;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(BackCommand))]
     [NotifyCanExecuteChangedFor(nameof(EditSelectedAdCommand))]
     [NotifyCanExecuteChangedFor(nameof(DeleteSelectedAdCommand))]
     private AdFullInfoViewModel? _selectedAd;
-    
-    [ObservableProperty]
-    private string? _searchText;
+
+    [ObservableProperty] private string? _searchText;
 
     public async Task RefreshAsync()
     {
@@ -44,16 +43,16 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         {
             return;
         }
-        
+
         _isRefreshingRunning = true;
         SelectedAd = null;
         using var scope = App.Services.CreateScope();
         var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DromDbContext>>();
         var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
         var currentUserId = scope.ServiceProvider.GetRequiredService<ICurrentUserService>().Get()?.Id;
-        
+
         await using var mainDbContext = await dbContextFactory.CreateDbContextAsync();
-        
+
         var items = await mainDbContext
             .Ads
             .OrderBy(e => e.CreationDateTime)
@@ -65,16 +64,18 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
                 CreationDateTime = e.CreationDateTime.ToLocalTime(),
                 Price = e.Price,
                 MainImageId = e.AdImages.First(i => i.IsMain).Id,
-                IsAbleAddToFavorites = !mainDbContext.FavoriteAds.Any(i => i.UserId == currentUserId && i.AdId == e.Id) && currentUserId != null && e.UserId != currentUserId,
+                IsAbleAddToFavorites =
+                    !mainDbContext.FavoriteAds.Any(i => i.UserId == currentUserId && i.AdId == e.Id) &&
+                    currentUserId != null && e.UserId != currentUserId,
             })
             .ToListAsync();
-        
+
         var loadMainImages = items
             .Select(async item =>
             {
                 var img = await cache.GetOrCreateAsync<BitmapImage>($"{item.Id}{item.MainImageId}", async _ =>
                 {
-                    await using var dbContext = await dbContextFactory.CreateDbContextAsync(); 
+                    await using var dbContext = await dbContextFactory.CreateDbContextAsync();
                     var bytes = (await dbContext.AdImages.FirstAsync(e => e.Id == item.MainImageId)).Bytes;
                     var bt = new BitmapImage();
                     using var stream = new MemoryStream(bytes);
@@ -84,21 +85,18 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
                     bt.EndInit();
                     return bt;
                 });
-                
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    item.MainImage = img;
-                });
+
+                Application.Current.Dispatcher.Invoke(() => { item.MainImage = img; });
             });
-        
+
         await Task.WhenAll(loadMainImages);
-        
+
         CatalogItems = items;
         CatalogItemsView = CollectionViewSource.GetDefaultView(items);
         CatalogItemsView.Filter = Filter;
         _isRefreshingRunning = false;
     }
-    
+
     private bool Filter(object obj)
     {
         if (string.IsNullOrWhiteSpace(SearchText))
@@ -106,13 +104,74 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
             return true;
         }
 
-        return obj is AdOverviewViewModel ad && ad.Title.Contains(SearchText, StringComparison.InvariantCultureIgnoreCase);
+        return obj is AdOverviewViewModel ad &&
+               ad.Title.Contains(SearchText, StringComparison.InvariantCultureIgnoreCase);
     }
-    
+
     [RelayCommand]
     private void Search()
     {
         CatalogItemsView?.Refresh();
+    }
+
+    [RelayCommand]
+    private async Task GenerateSellReport()
+    {
+        using var scope = App.Services.CreateScope();
+        var dialogContent = new DatesDialogViewModel();
+
+        var result = await DialogHost.Show(dialogContent, OkCancelDialogViewModel.DialogId);
+        if (result is not true)
+        {
+            return;
+        }
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
+        var queue = scope.ServiceProvider.GetRequiredService<ISnackbarMessageQueue>();
+
+        var from = dialogContent.From;
+        var to = dialogContent.To;
+
+        var soldAds = await dbContext
+            .Ads
+            .AsNoTracking()
+            .Where(ad => ad.Sold
+                         && ad.SoldDateTime != null
+                         && ad.SoldDateTime.Value.Date >= from!.Value.Date
+                         && ad.SoldDateTime.Value.Date <= to!.Value.Date)
+            .Select(e => new
+            {
+                CarInfo = $"{e.CarBrandName} {e.CarModelName}, {e.CarYear}",
+                e.Price,
+                SoldDateTime = e.SoldDateTime!.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                CreationDateTime = e.CreationDateTime.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                UserInfo = $"{e.User.Username}, {e.User.PhoneNumber}",
+            })
+            .ToListAsync();
+
+        using var template = new XLTemplate(Assembly.GetExecutingAssembly().GetManifestResourceStream("Drom.WPF.ОтчетОПродажах.xlsx"));
+
+        template.AddVariable(new
+        {
+            From = from.Value.ToString("dd.MM.yyyy"), 
+            To = to.Value.ToString("dd.MM.yyyy"), 
+            Items = soldAds
+        });
+        
+        template.Generate();
+        
+        template.Workbook.Worksheets.First().Columns().AdjustToContents();
+
+        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ОтчетОПродажах.xlsx");
+        template.SaveAs(path);
+
+        queue.Enqueue($"Отчет успешно сохранен как {path}");
+    }
+
+    [RelayCommand]
+    private async Task GenerateUsersRegistrationsReport()
+    {
+        // TODO: 
     }
 
     partial void OnSearchTextChanged(string? value)
@@ -130,13 +189,13 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         {
             return;
         }
-        
+
         using var scope = App.Services.CreateScope();
         var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DromDbContext>>();
         var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
         await using var mainDbContext = await dbContextFactory.CreateDbContextAsync();
         var currentUserId = scope.ServiceProvider.GetRequiredService<ICurrentUserService>().Get()?.Id;
-        
+
         var target = await mainDbContext.Ads.Include(e => e.User).FirstAsync(e => e.Id == ad.Id);
 
         var vm = new AdFullInfoViewModel
@@ -149,19 +208,21 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
             Price = target.Price,
             UserPhoneNumber = target.User.PhoneNumber,
             Description = target.Description,
-            IsAbleAddToFavorites = !(await mainDbContext.FavoriteAds.AnyAsync(i => i.UserId == currentUserId && i.AdId == target.Id)) && currentUserId != null && target.UserId != currentUserId,
+            IsAbleAddToFavorites =
+                !(await mainDbContext.FavoriteAds.AnyAsync(i => i.UserId == currentUserId && i.AdId == target.Id)) &&
+                currentUserId != null && target.UserId != currentUserId,
         };
-        
+
         var ids = await mainDbContext.AdImages.Where(e => e.AdId == ad.Id).Select(e => e.Id).ToListAsync();
 
         var res = new ConcurrentBag<BitmapImage>();
-        
+
         var loadTasks = ids
             .Select(async item =>
             {
                 var img = await cache.GetOrCreateAsync<BitmapImage>($"{ad.Id}{item}", async _ =>
                 {
-                    await using var dbContext = await dbContextFactory.CreateDbContextAsync(); 
+                    await using var dbContext = await dbContextFactory.CreateDbContextAsync();
                     var bytes = (await dbContext.AdImages.FirstAsync(e => e.Id == item)).Bytes;
                     var bt = new BitmapImage();
                     using var stream = new MemoryStream(bytes);
@@ -171,12 +232,12 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
                     bt.EndInit();
                     return bt;
                 });
-                
+
                 res.Add(img!);
             });
 
         await Task.WhenAll(loadTasks);
-        
+
         vm.Images = res;
         vm.SelectedImage = vm.Images.First();
         SelectedAd = vm;
@@ -195,7 +256,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         {
             return;
         }
-        
+
         using var scope = App.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
         var currentUserId = scope.ServiceProvider.GetRequiredService<ICurrentUserService>().Get()!.Id;
@@ -207,7 +268,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
                 UserId = currentUserId,
                 AdId = fullAd.Id,
             };
-            
+
             dbContext.FavoriteAds.Add(entity);
             await dbContext.SaveChangesAsync();
 
@@ -222,14 +283,14 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
                 UserId = currentUserId,
                 AdId = overviewAd.Id,
             };
-            
+
             dbContext.FavoriteAds.Add(entity);
             await dbContext.SaveChangesAsync();
-            
+
             await RefreshAsync();
         }
     }
-    
+
     private bool CanBack() => SelectedAd is not null;
 
     [RelayCommand(CanExecute = nameof(CanBack))]
@@ -258,12 +319,12 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         {
             return;
         }
-        
+
         var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
         var queue = scope.ServiceProvider.GetRequiredService<ISnackbarMessageQueue>();
-        
+
         await dbContext.Ads.Where(e => e.Id == SelectedAd!.Id).ExecuteDeleteAsync();
-        
+
         queue.Enqueue("Объявление снято с публикации.");
         await RefreshAsync();
     }
@@ -272,47 +333,43 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
 public partial class AdFullInfoViewModel : ObservableObject
 {
     public required Guid Id { get; init; }
-    
+
     public required DateTimeOffset CreationDateTime { get; init; }
-    
+
     public required string CarBrandName { get; init; }
-    
+
     public required string CarModelName { get; init; }
-    
+
     public required int CarYear { get; init; }
-    
+
     public required decimal Price { get; init; }
-    
+
     public required string UserPhoneNumber { get; init; }
 
-    [ObservableProperty] 
-    private bool _isAbleAddToFavorites;
-    
+    [ObservableProperty] private bool _isAbleAddToFavorites;
+
     public required string Description { get; init; }
 
-    [ObservableProperty]
-    private BitmapImage? _selectedImage;
-    
-    [ObservableProperty]
-    private IEnumerable<BitmapImage>? _images;
+    [ObservableProperty] private BitmapImage? _selectedImage;
+
+    [ObservableProperty] private IEnumerable<BitmapImage>? _images;
 }
 
 public partial class AdOverviewViewModel : ObservableObject
 {
     public required Guid Id { get; init; }
-    
+
     public required Guid UserId { get; init; }
-    
+
     public required string Title { get; init; }
-    
+
     public required DateTimeOffset CreationDateTime { get; init; }
-    
+
     public required bool IsAbleAddToFavorites { get; init; }
-    
+
     public required decimal Price { get; init; }
-    
+
     public required Guid MainImageId { get; init; }
-    
-    [ObservableProperty]
-    private BitmapImage? _mainImage;
+
+    [ObservableProperty] private BitmapImage? _mainImage;
 }

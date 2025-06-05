@@ -40,6 +40,18 @@
             
         </StackPanel>
         
+        <Button Grid.Row="0"
+                HorizontalAlignment="Right"
+                Command="{Binding GenerateSellReportCommand}"
+                Visibility="{Binding DataContext.CurrentUser, 
+                                RelativeSource={RelativeSource AncestorType=Window}, 
+                                Converter={StaticResource CurrentUserRoleVisibilityConverter}, 
+                                ConverterParameter={x:Static models:Role.Admin}}"
+                Style="{DynamicResource MaterialDesignFlatButton}">
+            <TextBlock Text="Отчет о продажах"
+                       TextDecorations="Underline"/>
+        </Button>
+        
         <ScrollViewer Grid.Row="1"
                       Visibility="{Binding SelectedAd, Converter={x:Static vms:MainWindowViewModel.InverseNullableToVisibilityConverter}}">
             <ItemsControl ItemsSource="{Binding CatalogItemsView}"
