@@ -18,6 +18,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal">
@@ -77,9 +78,45 @@
             </materialDesign:PopupBox>
         </StackPanel>
         
+        <Expander Header="Фильтры"
+                  Margin="5"
+                  Grid.Row="1"
+                  HorizontalAlignment="Left"
+                  Style="{StaticResource MaterialDesignExpander}">
+
+            <StackPanel Margin="10,5">
+                <TextBlock Text="Цена (₽)" FontWeight="SemiBold" Margin="0,10,0,4"/>
+                <UniformGrid Columns="2" Margin="0,0,0,10">
+                    <TextBox materialDesign:HintAssist.Hint="От"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                             Text="{Binding PriceFrom}"
+                             Margin="0, 0, 10, 0"
+                             MinWidth="100"/>
+                    <TextBox materialDesign:HintAssist.Hint="До"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                             Margin="10, 0, 0, 0"
+                             MinWidth="100"
+                             Text="{Binding PriceTo}" />
+                </UniformGrid>
+
+                <TextBlock Text="Год выпуска" FontWeight="SemiBold" Margin="0,10,0,4"/>
+                <ComboBox ItemsSource="{x:Static vms:CreateAdViewModel.Years}"
+                          SelectedItem="{Binding YearFilter, Mode=TwoWay}"
+                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                          Margin="0,0,0,10" />
+                
+                <Button Content="Применить"
+                        Command="{Binding SearchCommand}"
+                        Foreground="White"/>
+                <Button Content="Сбросить"
+                        Command="{Binding ClearFiltersCommand}"
+                        Foreground="White"
+                        Margin="0, 10, 0, 10"/>
+            </StackPanel>
+        </Expander>
+
         
-        
-        <ScrollViewer Grid.Row="1"
+        <ScrollViewer Grid.Row="2"
                       Visibility="{Binding SelectedAd, Converter={x:Static vms:MainWindowViewModel.InverseNullableToVisibilityConverter}}">
             <ItemsControl ItemsSource="{Binding CatalogItemsView}"
                           HorizontalContentAlignment="Stretch">

@@ -26,6 +26,10 @@
                         <Setter Property="FontSize" Value="16"/>
                         <Setter Property="Margin" Value="0,15,0,0"/>
                     </Style>
+                    <Style TargetType="PasswordBox" BasedOn="{StaticResource MaterialDesignRevealPasswordBox}">
+                        <Setter Property="FontSize" Value="16"/>
+                        <Setter Property="Margin" Value="0,15,0,0"/>
+                    </Style>
                     <Style TargetType="xctk:MaskedTextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
                         <Setter Property="FontSize" Value="16"/>
                         <Setter Property="Margin" Value="0,15,0,0"/>
@@ -35,8 +39,9 @@
                     <StackPanel>
                         <TextBox materialDesign:HintAssist.Hint="Логин/телефон"
                                  Text="{Binding UsernameOrPhoneNumber, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBox materialDesign:HintAssist.Hint="Пароль"
-                                 Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"/>
+                        <PasswordBox
+                            materialDesign:HintAssist.Hint="Пароль"
+                            materialDesign:PasswordBoxAssist.Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Margin="0, 5, 0, 0"
                                    HorizontalAlignment="Center"
                                    Text="{Binding ErrorMessage}"
@@ -55,8 +60,9 @@
                                  Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"/>
                         <xctk:MaskedTextBox Mask="{x:Static vms:AuthViewModel.PhoneNumberMask}"
                                             Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBox materialDesign:HintAssist.Hint="Пароль"
-                                 Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"/>
+                        <PasswordBox
+                            materialDesign:HintAssist.Hint="Пароль"
+                            materialDesign:PasswordBoxAssist.Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Margin="0, 5, 0, 0"
                                    HorizontalAlignment="Center"
                                    Text="{Binding ErrorMessage}"

@@ -36,7 +36,26 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
     [NotifyCanExecuteChangedFor(nameof(DeleteSelectedAdCommand))]
     private AdFullInfoViewModel? _selectedAd;
 
-    [ObservableProperty] private string? _searchText;
+    [ObservableProperty] 
+    private string? _searchText;
+    
+    [ObservableProperty]
+    private int? _priceFrom;
+    
+    [ObservableProperty]
+    private int? _priceTo;
+
+    [ObservableProperty] 
+    private int? _yearFilter;
+
+    [RelayCommand]
+    private void ClearFilters()
+    {
+        PriceTo = null;
+        PriceFrom = null;
+        YearFilter = null;
+        CatalogItemsView?.Refresh();
+    }
 
     public async Task RefreshAsync()
     {
@@ -56,7 +75,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
 
         var items = await mainDbContext
             .Ads
-            .OrderBy(e => e.CreationDateTime)
+            .OrderByDescending(e => e.CreationDateTime)
             .Where(e => !e.Sold)
             .Select(e => new AdOverviewViewModel
             {
@@ -69,6 +88,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
                 IsAbleAddToFavorites =
                     !mainDbContext.FavoriteAds.Any(i => i.UserId == currentUserId && i.AdId == e.Id) &&
                     currentUserId != null && e.UserId != currentUserId,
+                CarYear = e.CarYear,
             })
             .ToListAsync();
 
@@ -101,13 +121,26 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
 
     private bool Filter(object obj)
     {
-        if (string.IsNullOrWhiteSpace(SearchText))
+        if (obj is not AdOverviewViewModel ad)
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(SearchText) &&
+            !ad.Title.Contains(SearchText, StringComparison.InvariantCultureIgnoreCase))
         {
-            return true;
+            return false;
         }
 
-        return obj is AdOverviewViewModel ad &&
-               ad.Title.Contains(SearchText, StringComparison.InvariantCultureIgnoreCase);
+        if (PriceFrom.HasValue && ad.Price < PriceFrom.Value)
+        {
+            return false;
+        }
+
+        if (PriceTo.HasValue && ad.Price > PriceTo.Value)
+        {
+            return false;
+        }
+
+        return !YearFilter.HasValue || ad.CarYear == YearFilter.Value;
     }
 
     [RelayCommand]
@@ -400,6 +433,8 @@ public partial class AdOverviewViewModel : ObservableObject
     public required bool IsAbleAddToFavorites { get; init; }
 
     public required decimal Price { get; init; }
+    
+    public required int CarYear { get; init; }
 
     public required Guid MainImageId { get; init; }
 
