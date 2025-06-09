@@ -11,7 +11,7 @@ public class User
     
     public required string PhoneNumber { get; init; }
     
-    public required string PasswordHash { get; init; }
+    public required string PasswordHash { get; set; }
     
     public required DateTimeOffset RegistrationDateTime { get; init; }
     

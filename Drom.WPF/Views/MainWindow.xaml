@@ -158,5 +158,9 @@
         
         <materialDesign:DialogHost Grid.RowSpan="2"
                                    Identifier="{x:Static vms:NewsItemEditViewModel.DialogId}" />
+        
+        <materialDesign:DialogHost Grid.RowSpan="2"
+                                   CloseOnClickAway="True"
+                                   Identifier="{x:Static vms:ChangePasswordViewModel.DialogId}" />
     </Grid>
 </Window>

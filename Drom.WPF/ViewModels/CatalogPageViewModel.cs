@@ -89,6 +89,8 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
                     !mainDbContext.FavoriteAds.Any(i => i.UserId == currentUserId && i.AdId == e.Id) &&
                     currentUserId != null && e.UserId != currentUserId,
                 CarYear = e.CarYear,
+                CarModelName = e.CarModelName,
+                CarBrandName = e.CarBrandName,
             })
             .ToListAsync();
 
@@ -112,6 +114,19 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
             });
 
         await Task.WhenAll(loadMainImages);
+        
+        var avPriceByAd = await mainDbContext
+            .Ads
+            .Where(e => !e.Sold)
+            .GroupBy(e => new { e.CarBrandName, e.CarModelName })
+            .ToDictionaryAsync(e => e.Key, e => e.Select(p => p.Price).Average());
+
+
+        foreach (var ad in items)
+        {
+            var price = avPriceByAd.First(e => e.Key.CarBrandName == ad.CarBrandName && e.Key.CarModelName == ad.CarModelName).Value;
+            ad.AveragePrice = price;
+        }
 
         CatalogItems = items;
         CatalogItemsView = CollectionViewSource.GetDefaultView(items);
@@ -435,6 +450,12 @@ public partial class AdOverviewViewModel : ObservableObject
     public required decimal Price { get; init; }
     
     public required int CarYear { get; init; }
+    
+    public decimal AveragePrice { get; set; }
+    
+    public required string CarBrandName { get; init; }
+    
+    public required string CarModelName { get; init; }
 
     public required Guid MainImageId { get; init; }
 

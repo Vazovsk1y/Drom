@@ -7,6 +7,7 @@ using Drom.WPF.Infrastructure;
 using MaterialDesignThemes.Wpf;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Drom.WPF.ViewModels;
 
@@ -18,6 +19,7 @@ public partial class AuthViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SignInCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ForgotPasswordCommand))]
     private string? _usernameOrPhoneNumber;
     
     [ObservableProperty]
@@ -75,6 +77,45 @@ public partial class AuthViewModel : ObservableObject
         currentUserService.Set(user);
         DialogHost.Close(DialogId, true);
     }
+    
+    [RelayCommand(CanExecute = nameof(CanForgotPassword))]
+    private async Task ForgotPassword()
+    {
+        using var scope = App.Services.CreateScope();
+        var dialogContent = scope.ServiceProvider.GetRequiredService<IDialogContent<ChangePasswordViewModel>>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DromDbContext>();
+        var queue = scope.ServiceProvider.GetRequiredService<ISnackbarMessageQueue>();
+        
+        var user = await dbContext.Users.FirstOrDefaultAsync(e => e.Username == UsernameOrPhoneNumber) ?? 
+                   await dbContext.Users.FirstOrDefaultAsync(e => e.PhoneNumber == UsernameOrPhoneNumber);
+        
+        if (user is null)
+        {
+            ErrorMessage = "Неверный логин или пароль.";
+            return;
+        }
+
+        dialogContent.ViewModel.ActualCode = string.Join(string.Empty, Enumerable.Range(0, 6).Select(_ => Random.Shared.Next(1, 9)));
+        
+        queue.Enqueue(dialogContent.ViewModel.ActualCode);
+        
+        DialogHost.Close(DialogId);
+        var result = await DialogHost.Show(dialogContent, ChangePasswordViewModel.DialogId);
+        
+        if (result is not true)
+        {
+            return;
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dialogContent.ViewModel.NewPassword);
+        await dbContext.SaveChangesAsync();
+        queue.Enqueue("Пароль успешно изменен");
+
+        var vm = scope.ServiceProvider.GetRequiredService<MainWindowViewModel>();
+        vm.OpenAuthDialogCommand.Execute(null);
+    }
+
+    private bool CanForgotPassword() => !string.IsNullOrWhiteSpace(UsernameOrPhoneNumber);
 
     [RelayCommand(CanExecute = nameof(CanSignIn))]
     private async Task SignIn()

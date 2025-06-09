@@ -52,6 +52,11 @@
                                 BorderBrush="#00BFFF"
                                 Foreground="White"
                                 Margin="0, 15, 0, 0"/>
+                        
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Margin="0, 5, 0, 0"
+                                Command="{Binding ForgotPasswordCommand}"
+                                Content="Забыли пароль?"/>
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="Регистрация">

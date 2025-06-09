@@ -34,6 +34,9 @@ public partial class App : Application
 
                 e.AddTransient<DatesDialogViewModel>();
                 e.AddTransient<IDialogContent<DatesDialogViewModel>, DatesDialog>();
+                
+                e.AddTransient<ChangePasswordViewModel>();
+                e.AddTransient<IDialogContent<ChangePasswordViewModel>, ChangePasswordDialog>();
 
                 e.AddDbContext<DromDbContext>(o =>
                 {

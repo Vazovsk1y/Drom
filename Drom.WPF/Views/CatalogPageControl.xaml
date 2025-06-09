@@ -153,6 +153,10 @@
                                         <TextBlock Text="{Binding Price, StringFormat={}{0} ₽}"
                                                    FontWeight="500"
                                                    FontSize="18" />
+                                        <TextBlock>
+                                            <Run Text="Средняя стоимость: "/>
+                                            <Run Text="{Binding AveragePrice}"/>
+                                        </TextBlock>
                                         <Button Style="{StaticResource MaterialDesignIconButton}"
                                                 Visibility="{Binding IsAbleAddToFavorites, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                 Margin="0, 10, 0, 0"
