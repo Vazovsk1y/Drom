@@ -18,6 +18,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal">
@@ -40,7 +41,28 @@
             
         </StackPanel>
         
-        <ScrollViewer Grid.Row="1"
+        <StackPanel Grid.Row="1"
+                    Margin="10, 10, 0, 10">
+            <ComboBox HorizontalAlignment="Left"
+                      VerticalContentAlignment="Center"
+                      FontSize="16"
+                      Margin="5, 0, 0, 0"
+                      MinWidth="200"
+                      SelectedItem="{Binding SelectedCategory}"
+                      x:Name="CategoriesComboBox"
+                      ItemsSource="{x:Static vms:CatalogPageViewModel.Categories}"
+                      DisplayMemberPath="DisplayName">
+                <i:Interaction.Triggers>
+                    <b:EventTrigger EventName="SelectionChanged">
+                        <i:InvokeCommandAction Command="{Binding CategorySelectedCommand}"
+                                               CommandParameter="{Binding SelectedItem, ElementName=CategoriesComboBox}" />
+                    </b:EventTrigger>
+                </i:Interaction.Triggers>
+            </ComboBox>
+        </StackPanel>
+        
+        
+        <ScrollViewer Grid.Row="2"
                       Visibility="{Binding SelectedProduct, Converter={x:Static vms:MainWindowViewModel.InverseNullableToVisibilityConverter}}">
             <ItemsControl ItemsSource="{Binding CatalogItemsView}">
                 <ItemsControl.ItemsPanel>
@@ -83,7 +105,7 @@
             </ItemsControl>
         </ScrollViewer>
 
-        <materialDesign:Card Grid.Row="1"
+        <materialDesign:Card Grid.Row="2"
                              Padding="16"
                              Margin="16"
                              Visibility="{Binding SelectedProduct, Converter={StaticResource NullableToVisibilityConverter}}">

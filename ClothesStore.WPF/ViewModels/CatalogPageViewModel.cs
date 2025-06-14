@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -23,6 +24,91 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
 
     private bool _isRefreshingRunning;
     
+    public static readonly IEnumerable<EnumViewModel<ProductCategory>> Categories = Initialize();
+
+    private static List<EnumViewModel<ProductCategory>> Initialize()
+    {
+        var list = Enum
+            .GetValues<ProductCategory>()
+            .Select(c => new EnumViewModel<ProductCategory>(c))
+            .ToList();
+
+        var first = new EnumViewModel<ProductCategory>(ProductCategory.Accessories)
+        {
+            DisplayName = "Все"
+        };
+        list.Insert(0, first);
+        
+        return list;
+    }
+    
+    [RelayCommand]
+    private async Task OnCategorySelected(EnumViewModel<ProductCategory>? viewModel)
+    {
+        switch (viewModel)
+        {
+            case null:
+                return;
+            case {DisplayName: "Все"}:
+                await RefreshAsync();
+                return;
+        }
+        
+        _isRefreshingRunning = true;
+        SelectedProduct = null;
+        using var scope = App.Services.CreateScope();
+        var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<DromDbContext>>();
+        var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
+        
+        await using var mainDbContext = await dbContextFactory.CreateDbContextAsync();
+        
+        var items = await mainDbContext
+            .Products
+            .OrderBy(e => e.Title)
+            .Where(e => e.Category == viewModel.Value)
+            .Select(e => new ProductOverviewViewModel
+            {
+                Id = e.Id,
+                Title = e.Title,
+                Price = e.Price,
+                MainImageId = e.Images.First(i => i.IsMain).Id,
+            })
+            .ToListAsync();
+        
+        var loadMainImages = items
+            .Select(async item =>
+            {
+                var img = await cache.GetOrCreateAsync<BitmapImage>($"{item.Id}{item.MainImageId}", async _ =>
+                {
+                    await using var dbContext = await dbContextFactory.CreateDbContextAsync(); 
+                    var bytes = (await dbContext.ProductImages.FirstAsync(e => e.Id == item.MainImageId)).Bytes;
+                    var bt = new BitmapImage();
+                    using var stream = new MemoryStream(bytes);
+                    bt.BeginInit();
+                    bt.StreamSource = stream;
+                    bt.CacheOption = BitmapCacheOption.OnLoad;
+                    bt.EndInit();
+                    return bt;
+                });
+                
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    item.MainImage = img;
+                });
+            });
+        
+        await Task.WhenAll(loadMainImages);
+        
+        CatalogItems = items;
+        CatalogItemsView = CollectionViewSource.GetDefaultView(items);
+        CatalogItemsView.Filter = Filter;
+        _isRefreshingRunning = false;
+        Category = viewModel;
+    }
+    
+    [ObservableProperty]
+    private EnumViewModel<ProductCategory>? _selectedCategory;
+    
     [ObservableProperty]
     private IEnumerable<ProductOverviewViewModel>? _catalogItems;
     
@@ -37,6 +123,9 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
     
     [ObservableProperty]
     private string? _searchText;
+    
+    [ObservableProperty]
+    private EnumViewModel<ProductCategory>? _category;
 
     public async Task RefreshAsync()
     {
@@ -53,8 +142,16 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         
         await using var mainDbContext = await dbContextFactory.CreateDbContextAsync();
         
-        var items = await mainDbContext
+        var query = mainDbContext
             .Products
+            .AsQueryable();
+
+        if (SelectedCategory is not null && SelectedCategory.DisplayName != "Все")
+        {
+            query = query.Where(e => SelectedCategory.Value == e.Category);
+        }
+        
+        var items = await query
             .OrderBy(e => e.Title)
             .Select(e => new ProductOverviewViewModel
             {
@@ -92,6 +189,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         CatalogItems = items;
         CatalogItemsView = CollectionViewSource.GetDefaultView(items);
         CatalogItemsView.Filter = Filter;
+        SelectedCategory = Categories.First();
         _isRefreshingRunning = false;
     }
     
