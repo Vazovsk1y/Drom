@@ -120,9 +120,36 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding SelectedProduct.Title}"
+                                   FontWeight="500"
+                                   FontSize="18"/>
+                        <TextBlock Text="{Binding SelectedProduct.Price, StringFormat={}{0} ₽}"
+                                   FontSize="16"
+                                   Margin="0, 5, 0, 5"/>
+                       
+                        <StackPanel>
+                            <TextBlock Text="Выберите размер:"
+                                       FontWeight="Bold"
+                                       Margin="0,10,0,5" />
+
+                            <ItemsControl ItemsSource="{Binding SelectedProduct.ClothingSizes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <RadioButton Content="{Binding}"
+                                                     FontSize="15"
+                                                     Margin="0,5, 0, 0"
+                                                     GroupName="ClothingSizeGroup"
+                                                     Command="{Binding DataContext.SelectSizeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                     CommandParameter="{Binding}">
+                                        </RadioButton>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                        
                         <TextBox HorizontalContentAlignment="Left"
                                  VerticalContentAlignment="Top"
-                                 Margin="0, 10, 5, 0"
+                                 Margin="0, 15, 5, 0"
                                  IsReadOnly="True"
                                  FontSize="16"
                                  Text="{Binding SelectedProduct.Description}"
@@ -154,6 +181,11 @@
                                     Command="{Binding DeleteSelectedProductCommand}">
                                 <materialDesign:PackIcon Kind="Delete"/>
                             </Button>
+                            
+                            <Button Command="{Binding AddToBasketCommand}"
+                                    Margin="4, 0, 0, 0"
+                                    Foreground="White"
+                                    Content="Добавить в корзину"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>

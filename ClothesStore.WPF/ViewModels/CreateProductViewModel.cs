@@ -38,6 +38,11 @@ public partial class CreateProductViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
     private EnumViewModel<ProductCategory>? _selectedCategory;
+
+    public IEnumerable<CreateProductSizeViewModel> Sizes { get; } = Enum
+            .GetValues<ClothingSize>()
+            .Select(e => new CreateProductSizeViewModel() { Size = e, Count = 1})
+            .ToList();
     
     [RelayCommand]
     private void SelectFiles()
@@ -116,9 +121,19 @@ public partial class CreateProductViewModel : ObservableObject
             Price = (decimal)Price!,
             Category = SelectedCategory!.Value,
         };
+
+        var sizes = Sizes.Select(e => new SizeOption
+        {
+            Id = Guid.NewGuid(),
+            Size = e.Size,
+            QuantityInStock = (int)e.Count,
+            ProductId = ad.Id,
+        });
         
         dbContext.Products.Add(ad);
         dbContext.ProductImages.AddRange(images);
+        dbContext.SizeOptions.AddRange(sizes);
+        
         await dbContext.SaveChangesAsync();
         
         DialogHost.Close(DialogId, true);
@@ -129,4 +144,12 @@ public partial class CreateProductViewModel : ObservableObject
                                  Price > 0 &&
                                  !string.IsNullOrWhiteSpace(Description) &&
                                  SelectedCategory is not null;
+}
+
+public partial class CreateProductSizeViewModel : ObservableObject
+{
+    public required ClothingSize Size { get; init; }
+
+    [ObservableProperty]
+    private uint _count;
 }

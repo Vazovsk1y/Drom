@@ -132,7 +132,7 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
         await using var mainDbContext = await dbContextFactory.CreateDbContextAsync();
         
-        var target = await mainDbContext.Products.FirstAsync(e => e.Id == product.Id);
+        var target = await mainDbContext.Products.Include(e => e.AvailableSizes).FirstAsync(e => e.Id == product.Id);
 
         var vm = new ProductFullInfoViewModel
         {
@@ -140,6 +140,9 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
             Title = product.Title,
             Price = target.Price,
             Description = target.Description,
+            ClothingSizes = target.AvailableSizes
+                .Select(e => e.Size)
+                .ToList(),
         };
         
         var ids = await mainDbContext.ProductImages.Where(e => e.ProductId == product.Id).Select(e => e.Id).ToListAsync();
@@ -215,6 +218,19 @@ public partial class CatalogPageViewModel : ObservableObject, IHasPageIndex, IRe
         queue.Enqueue("Объявление снято с публикации.");
         await RefreshAsync();
     }
+
+
+    [RelayCommand]
+    private void SelectSize(ClothingSize selectedSize)
+    {
+        SelectedProduct!.SelectedClothingSize = selectedSize;
+    }
+    
+    [RelayCommand]
+    private async Task AddToBasket()
+    {
+        // TODO: 
+    }
 }
 
 public partial class ProductFullInfoViewModel : ObservableObject
@@ -226,6 +242,11 @@ public partial class ProductFullInfoViewModel : ObservableObject
     public required string Description { get; init; }
     
     public required decimal Price { get; init; }
+    
+    public required IEnumerable<ClothingSize> ClothingSizes { get; init; }
+    
+    [ObservableProperty]
+    private ClothingSize? _selectedClothingSize;
     
     [ObservableProperty]
     private BitmapImage? _selectedImage;
